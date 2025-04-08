@@ -156,13 +156,42 @@ const userOrders = async (req,res) => {
     }
 }
 
+import nodemailer from "nodemailer";
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'ybandawar@gmail.com',
+    pass: 'lxvrqbxdxgkbacoa', // NOT your regular Gmail password
+  },
+});
+
+const sendUpdateEmail = async (orderId, status, userEmail) => {
+  try {
+    const info = await transporter.sendMail({
+      from: '"Yuganda Forever" ybandawar@gmail.com',
+      to: userEmail,
+      subject: "Your Order has an update",
+      text: 'Thanks for ordering. We’re excited to have you!',
+      // html: '<b>Thanks for registering!</b>' // optional
+    });
+
+    console.log('Message sent: %s', info.messageId);
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+};
+
+
+
 // update order status from Admin Panel
 const updateStatus = async (req,res) => {
     try {
         
         const { orderId, status } = req.body
+        const userEmail = "parth.22211358@viit.ac.in"
 
         await orderModel.findByIdAndUpdate(orderId, { status })
+        await sendUpdateEmail(orderId, status, userEmail);
         res.json({success:true,message:'Status Updated'})
 
     } catch (error) {
