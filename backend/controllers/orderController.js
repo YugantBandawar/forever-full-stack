@@ -216,11 +216,11 @@ const sendUpdateEmail = async (orderId, status, userEmail) => {
 const updateStatus = async (req,res) => {
     try {
         const {token} = req.headers
-
-      
-
         const { orderId, status } = req.body
-        const userEmail = "parth.22211358@viit.ac.in"
+        
+        const order = await orderModel.findById(orderId);
+        const user = await userModel.findById(order.userId);
+        const userEmail = user.email;
 
         await orderModel.findByIdAndUpdate(orderId, { status })
         await sendUpdateEmail(orderId, status, userEmail);
