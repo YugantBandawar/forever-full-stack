@@ -160,19 +160,48 @@ import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'ybandawar@gmail.com',
+    user: 'yabandawar@gmail.com',
     pass: 'lxvrqbxdxgkbacoa', // NOT your regular Gmail password
   },
 });
 
 const sendUpdateEmail = async (orderId, status, userEmail) => {
+    const today = new Date()
   try {
     const info = await transporter.sendMail({
-      from: '"Yuganda Forever" ybandawar@gmail.com',
+      from: '"Forever" Admin Team',
       to: userEmail,
-      subject: "Your Order has an update",
-      text: 'Thanks for ordering. We’re excited to have you!',
-      // html: '<b>Thanks for registering!</b>' // optional
+      subject: "Your Forever Order has an Update",
+      text:"Forever Order Update",
+      html: `
+        <body style="margin: 0; padding: 0; background-color: #f4f4f7; font-family: Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f7; padding: 20px;">
+      <tr>
+        <td align="center">
+          <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+            <tr>
+              <td style="background-color: #4CAF50; padding: 20px; text-align: center; color: #ffffff;">
+                <h1 style="margin: 0;">Order Update</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 30px; color: #333333; font-size: 16px; line-height: 1.6;">
+                <p>Your order has been <strong>${status}</strong>.</p>
+                <p>Thanks for ordering with us!</p>
+                <p style="color: #999;">Latest updated at: <em>${today.toLocaleDateString()}</em></p>
+              </td>
+            </tr>
+            <tr>
+              <td style="background-color: #f4f4f7; padding: 20px; text-align: center; color: #888888; font-size: 12px;">
+                &copy; ${new Date().getFullYear()} Forever. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+      `
     });
 
     console.log('Message sent: %s', info.messageId);
@@ -186,7 +215,10 @@ const sendUpdateEmail = async (orderId, status, userEmail) => {
 // update order status from Admin Panel
 const updateStatus = async (req,res) => {
     try {
-        
+        const {token} = req.headers
+
+      
+
         const { orderId, status } = req.body
         const userEmail = "parth.22211358@viit.ac.in"
 
