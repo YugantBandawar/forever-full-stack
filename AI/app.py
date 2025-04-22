@@ -1,4 +1,3 @@
-# Replace these imports at the top of the file
 import cv2
 import numpy as np
 from flask import Flask, request, jsonify, render_template
@@ -10,65 +9,71 @@ from sklearn.cluster import KMeans
 import json
 import random
 import os
-from flask_cors import CORS  # Import Flask-CORS
+from flask_cors import CORS
+import requests
+import time
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv( dotenv_path="AI/.env" )
 
 app = Flask(__name__)
-
-# Enable CORS for the Flask app
 CORS(app)
 
-# Configuration
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit upload size to 16MB
+app.config['JSON_SORT_KEYS'] = False  # Disable sorting of JSON keys
 
-# Create uploads directory if it doesn't exist
+# Create upload folder if it doesn't exist
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# Initialize MediaPipe solutions instead of dlib
+# Set up MediaPipe
 mp_face_mesh = mp.solutions.face_mesh
 mp_face_detection = mp.solutions.face_detection
 mp_drawing = mp.solutions.drawing_utils
 
-# Use MediaPipe Face Mesh for better facial landmark detection
 face_mesh = mp_face_mesh.FaceMesh(
     static_image_mode=True,
     max_num_faces=1,
     min_detection_confidence=0.5
 )
 
-# Use MediaPipe Face Detection for face detection
 face_detector = mp_face_detection.FaceDetection(
     model_selection=1,  # 0 for short-range, 1 for full-range detection
     min_detection_confidence=0.5
 )
 
-# Load feature model (unchanged)
 feature_model = MobileNetV2(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
 
 # Load fashion database
-with open('fashion_database.json', 'r') as f:
+with open('AI/fashion_database.json', 'r') as f:
     fashion_db = json.load(f)
+
+# Get API keys from environment variables
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
+# Default to Groq if both are set
+USE_GROQ = GROQ_API_KEY is not None
+USE_GEMINI = GEMINI_API_KEY is not None and not USE_GROQ
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_dominant_colors(img, n_colors=3):
     """Extract dominant colors from an image"""
-    # Reshape image to be a list of pixels
     pixels = img.reshape(-1, 3)
     
-    # Cluster the pixel intensities
     clt = KMeans(n_clusters=n_colors)
     clt.fit(pixels)
     
-    # Return cluster centers as colors
     return clt.cluster_centers_
 
 def detect_face_shape(landmarks, img_height, img_width):
     """Determine face shape based on facial landmarks using MediaPipe"""
-    # Convert relative coordinates to absolute pixel coordinates
     landmarks_points = []
     for landmark in landmarks:
         x = int(landmark.x * img_width)
@@ -119,16 +124,10 @@ def detect_body_shape(img):
     """Determine body shape from full body image using improved edge detection"""
     height, width = img.shape[:2]
     
-    # Convert to grayscale for better edge detection
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
-    # Apply Gaussian blur to reduce noise
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    
-    # Edge detection
     edges = cv2.Canny(blurred, 50, 150)
     
-    # Define body regions with better proportions
     shoulder_region = edges[int(height*0.15):int(height*0.3), :]
     waist_region = edges[int(height*0.4):int(height*0.5), :]
     hip_region = edges[int(height*0.5):int(height*0.65), :]
@@ -161,11 +160,9 @@ def detect_body_shape(img):
 
 def get_region_width(profile):
     """Calculate width of body region from edge profile"""
-    # Filter small edges to remove noise
     threshold = np.max(profile) * 0.2 if np.max(profile) > 0 else 0
     significant_edges = profile > threshold
     
-    # Find leftmost and rightmost significant edges
     if np.any(significant_edges):
         edge_indices = np.where(significant_edges)[0]
         left_edge = np.min(edge_indices)
@@ -176,23 +173,18 @@ def get_region_width(profile):
 
 def analyze_skin_tone(face_img):
     """Analyze skin tone from face image"""
-    # Convert to YCrCb color space which better separates skin colors
     ycrcb = cv2.cvtColor(face_img, cv2.COLOR_BGR2YCrCb)
     
-    # Create a binary mask of skin pixels
     lower = np.array([0, 133, 77], dtype=np.uint8)
     upper = np.array([255, 173, 127], dtype=np.uint8)
     mask = cv2.inRange(ycrcb, lower, upper)
     
-    # Apply mask to get only skin pixels
     skin = cv2.bitwise_and(face_img, face_img, mask=mask)
     
-    # Get dominant color in skin area
     skin_pixels = skin[mask > 0]
     if len(skin_pixels) > 0:
         avg_color = np.mean(skin_pixels, axis=0)
         
-        # Classify skin tone based on RGB values
         if avg_color[2] > 200:
             return "very fair"
         elif avg_color[2] > 170:
@@ -210,12 +202,10 @@ def analyze_skin_tone(face_img):
 
 def process_prompt(prompt):
     """Extract style keywords from user prompt"""
-    # In a real system, use NLP for better keyword extraction
     style_keywords = []
     occasion_keywords = []
     color_keywords = []
     
-    # Define keyword lists
     style_list = ["casual", "formal", "business", "party", "vintage", "boho", "minimalist", 
                   "streetwear", "preppy", "athletic", "elegant", "trendy", "classic"]
     occasion_list = ["work", "date", "wedding", "interview", "gym", "everyday", "beach", 
@@ -248,6 +238,147 @@ def process_prompt(prompt):
         "occasion": occasion_keywords,
         "colors": color_keywords
     }
+
+def call_groq_api(prompt):
+    """Call Groq API for enhanced fashion recommendations"""
+    if not GROQ_API_KEY:
+        return {"error": "Groq API key not configured"}
+    
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": "llama3-8b-8192",  # Using Llama 3 model
+        "messages": [
+            {
+                "role": "system", 
+                "content": "You are a fashion expert providing detailed fashion recommendations. Respond with JSON format containing detailed outfit descriptions, styling tips, and fashion trends."
+            },
+            {
+                "role": "user", 
+                "content": prompt
+            }
+        ],
+        "temperature": 0.7,
+        "max_tokens": 1024
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        print(f"Groq API response: {response.json()}")
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return {"error": f"Groq API error: {str(e)}"}
+
+def call_gemini_api(prompt):
+    """Call Google Gemini API for enhanced fashion recommendations"""
+    if not GEMINI_API_KEY:
+        return {"error": "Gemini API key not configured"}
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": prompt
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 1024
+        }
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as e:
+        return {"error": f"Gemini API error: {str(e)}"}
+
+def enhance_recommendations_with_ai(base_recommendations, analysis, prompt_data):
+    """Use AI to enhance fashion recommendations"""
+    ai_prompt = f"""
+    Please provide enhanced fashion recommendations based on the following information:
+    
+    Body Shape: {analysis['body_shape']}
+    Face Shape: {analysis['face_shape']}
+    Skin Tone: {analysis['skin_tone']}
+    Style Preferences: {', '.join(prompt_data['style'])}
+    Occasion: {', '.join(prompt_data['occasion'])}
+    Color Preferences: {', '.join(prompt_data['colors'] if prompt_data['colors'] else ['any'])}
+    
+    Based on this analysis, provide:
+    1. 2-3 complete outfit recommendations with detailed descriptions
+    2. Specific style tips for this body shape, face shape, and skin tone combination
+    3. Current fashion trends that would suit this individual
+    4. Accessory recommendations
+    5. Shopping tips (what to look for when buying items)
+    
+    Format your response as a JSON object with these sections.
+    """
+    
+    try:
+        if USE_GROQ:
+            ai_response = call_groq_api(ai_prompt)
+        elif USE_GEMINI:
+            ai_response = call_gemini_api(ai_prompt)
+        else:
+            return base_recommendations
+        
+        # Try to parse the response as JSON
+        try:
+            if isinstance(ai_response, str):
+                # Extract JSON if the response is wrapped in markdown code blocks
+                if "```json" in ai_response:
+                    json_start = ai_response.find("```json") + 7
+                    json_end = ai_response.find("```", json_start)
+                    ai_response = ai_response[json_start:json_end].strip()
+                ai_recommendations = json.loads(ai_response)
+            else:
+                ai_recommendations = ai_response
+                
+            # Merge AI recommendations with base recommendations
+            enhanced_recommendations = base_recommendations.copy()
+            
+            # Add AI-enhanced sections
+            if "outfit_recommendations" in ai_recommendations:
+                enhanced_recommendations["ai_outfit_recommendations"] = ai_recommendations["outfit_recommendations"]
+            
+            if "style_tips" in ai_recommendations:
+                enhanced_recommendations["ai_style_tips"] = ai_recommendations["style_tips"]
+                
+            if "fashion_trends" in ai_recommendations:
+                enhanced_recommendations["fashion_trends"] = ai_recommendations["fashion_trends"]
+                
+            if "accessory_recommendations" in ai_recommendations:
+                enhanced_recommendations["ai_accessory_recommendations"] = ai_recommendations["accessory_recommendations"]
+                
+            if "shopping_tips" in ai_recommendations:
+                enhanced_recommendations["shopping_tips"] = ai_recommendations["shopping_tips"]
+                
+            return enhanced_recommendations
+        except json.JSONDecodeError:
+            # If JSON parsing fails, try to extract structured information from text
+            enhanced_recommendations = base_recommendations.copy()
+            enhanced_recommendations["ai_fashion_advice"] = ai_response
+            return enhanced_recommendations
+            
+    except Exception as e:
+        print(f"AI enhancement error: {str(e)}")
+        return base_recommendations
 
 def generate_recommendations(body_shape, face_shape, skin_tone, prompt_data):
     """Generate fashion recommendations based on analysis"""
@@ -379,7 +510,7 @@ def analyze():
         
         # Analyze image
         try:
-            # Detect body shape (unchanged)
+            # Detect body shape
             body_shape = detect_body_shape(img)
             
             # Use MediaPipe Face Detection to detect faces
@@ -404,30 +535,41 @@ def analyze():
                 x_max = min(width, x_min + x_width)
                 y_max = min(height, y_min + y_height)
                 
-                # Extract face region for skin tone analysis
                 face_roi = img[y_min:y_max, x_min:x_max]
                 if face_roi.size > 0:  # Check if face ROI is not empty
                     skin_tone = analyze_skin_tone(face_roi)
                 
-                # Use MediaPipe Face Mesh for facial landmarks
                 face_mesh_results = face_mesh.process(img_rgb)
                 if face_mesh_results.multi_face_landmarks:
-                    # Get landmarks for the first face
                     face_landmarks = face_mesh_results.multi_face_landmarks[0].landmark
                     face_shape = detect_face_shape(face_landmarks, height, width)
             
-            # Generate recommendations (unchanged)
-            recommendations = generate_recommendations(body_shape, face_shape, skin_tone, prompt_data)
+            # Get base recommendations
+            base_recommendations = generate_recommendations(body_shape, face_shape, skin_tone, prompt_data)
             
-            # Prepare response
+            # Analysis data
+            analysis_data = {
+                'body_shape': body_shape,
+                'face_shape': face_shape,
+                'skin_tone': skin_tone,
+                'style_preferences': prompt_data
+            }
+            
+            # Enhance recommendations with AI if API keys are available
+            if USE_GROQ or USE_GEMINI:
+                enhanced_recommendations = enhance_recommendations_with_ai(
+                    base_recommendations, analysis_data, prompt_data
+                )
+                ai_provider = "Groq" if USE_GROQ else "Gemini"
+            else:
+                enhanced_recommendations = base_recommendations
+                ai_provider = None
+            
             response = {
-                'analysis': {
-                    'body_shape': body_shape,
-                    'face_shape': face_shape,
-                    'skin_tone': skin_tone,
-                    'style_preferences': prompt_data
-                },
-                'recommendations': recommendations
+                'analysis': analysis_data,
+                'recommendations': enhanced_recommendations,
+                'ai_enhanced': ai_provider is not None,
+                'ai_provider': ai_provider
             }
             
             return jsonify(response)
@@ -437,360 +579,25 @@ def analyze():
     
     return jsonify({'error': 'Invalid file format'}), 400
 
-# Create a dummy fashion database for testing
-def create_dummy_database():
-    fashion_db = {
-        "items": [
-            {
-                "name": "V-neck T-shirt",
-                "category": "top",
-                "style": ["casual", "minimalist"],
-                "occasion": ["everyday", "weekend"],
-                "suitable_body_shapes": ["inverted triangle", "hourglass", "rectangle", "oval"]
-            },
-            {
-                "name": "Boat neck blouse",
-                "category": "top",
-                "style": ["elegant", "formal"],
-                "occasion": ["work", "dinner"],
-                "suitable_body_shapes": ["pear", "hourglass", "oval"]
-            },
-            {
-                "name": "Button-down shirt",
-                "category": "top",
-                "style": ["business", "classic"],
-                "occasion": ["work", "interview"],
-                "suitable_body_shapes": ["all"]
-            },
-            {
-                "name": "Wrap top",
-                "category": "top",
-                "style": ["elegant", "formal"],
-                "occasion": ["work", "dinner", "date"],
-                "suitable_body_shapes": ["hourglass", "rectangle", "oval", "inverted triangle"]
-            },
-            {
-                "name": "Straight leg jeans",
-                "category": "bottom",
-                "style": ["casual", "classic"],
-                "occasion": ["everyday", "weekend"],
-                "suitable_body_shapes": ["hourglass", "rectangle"]
-            },
-            {
-                "name": "A-line skirt",
-                "category": "bottom",
-                "style": ["elegant", "classic"],
-                "occasion": ["work", "dinner"],
-                "suitable_body_shapes": ["pear", "hourglass", "oval"]
-            },
-            {
-                "name": "Tailored trousers",
-                "category": "bottom",
-                "style": ["business", "formal"],
-                "occasion": ["work", "interview"],
-                "suitable_body_shapes": ["hourglass", "rectangle", "inverted triangle"]
-            },
-            {
-                "name": "Wide-leg pants",
-                "category": "bottom",
-                "style": ["trendy", "boho"],
-                "occasion": ["everyday", "weekend", "beach"],
-                "suitable_body_shapes": ["inverted triangle", "rectangle", "hourglass"]
-            },
-            {
-                "name": "Wrap dress",
-                "category": "dress",
-                "style": ["elegant", "classic"],
-                "occasion": ["work", "dinner", "date"],
-                "suitable_body_shapes": ["all"]
-            },
-            {
-                "name": "A-line dress",
-                "category": "dress",
-                "style": ["elegant", "formal"],
-                "occasion": ["wedding", "formal event"],
-                "suitable_body_shapes": ["pear", "oval", "rectangle"]
-            },
-            {
-                "name": "Shift dress",
-                "category": "dress",
-                "style": ["minimalist", "business"],
-                "occasion": ["work", "interview"],
-                "suitable_body_shapes": ["inverted triangle", "rectangle"]
-            },
-            {
-                "name": "Statement necklace",
-                "category": "accessory",
-                "style": ["trendy", "elegant"],
-                "occasion": ["dinner", "party", "date"],
-                "suitable_body_shapes": ["all"]
-            },
-            {
-                "name": "Structured handbag",
-                "category": "accessory",
-                "style": ["business", "classic"],
-                "occasion": ["work", "interview"],
-                "suitable_body_shapes": ["all"]
-            },
-            {
-                "name": "Hoop earrings",
-                "category": "accessory",
-                "style": ["casual", "trendy"],
-                "occasion": ["everyday", "weekend", "party"],
-                "suitable_body_shapes": ["all"]
-            }
-        ]
+@app.route('/api-status', methods=['GET'])
+def api_status():
+    """Check the status of connected AI APIs"""
+    status = {
+        "groq": "available" if USE_GROQ else "not configured",
+        "gemini": "available" if USE_GEMINI else "not configured"
     }
-    
-    # Save to file
-    with open('fashion_database.json', 'w') as f:
-        json.dump(fashion_db, f, indent=2)
-
-# Create HTML template file
-def create_html_template():
-    html_content = """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Fashion Recommendation System</title>
-        <style>
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                line-height: 1.6;
-                margin: 0;
-                padding: 20px;
-                background-color: #f8f9fa;
-                color: #333;
-            }
-            .container {
-                max-width: 800px;
-                margin: 0 auto;
-                background-color: white;
-                padding: 30px;
-                border-radius: 10px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            }
-            h1 {
-                text-align: center;
-                color: #6c63ff;
-                margin-bottom: 30px;
-            }
-            .upload-section {
-                margin-bottom: 30px;
-                padding: 20px;
-                border: 2px dashed #ccc;
-                border-radius: 5px;
-                text-align: center;
-            }
-            .form-group {
-                margin-bottom: 20px;
-            }
-            label {
-                display: block;
-                margin-bottom: 8px;
-                font-weight: 600;
-            }
-            input[type="text"], textarea {
-                width: 100%;
-                padding: 10px;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                box-sizing: border-box;
-            }
-            input[type="file"] {
-                margin-top: 10px;
-            }
-            button {
-                background-color: #6c63ff;
-                color: white;
-                border: none;
-                padding: 12px 24px;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 16px;
-                display: block;
-                margin: 20px auto 0;
-                transition: background-color 0.3s;
-            }
-            button:hover {
-                background-color: #5a52d5;
-            }
-            #preview {
-                max-width: 300px;
-                max-height: 300px;
-                margin: 20px auto;
-                display: none;
-            }
-            #results {
-                display: none;
-                margin-top: 30px;
-                padding: 20px;
-                background-color: #f0f0f0;
-                border-radius: 5px;
-            }
-            .outfit {
-                background-color: white;
-                padding: 15px;
-                margin-bottom: 15px;
-                border-radius: 5px;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            }
-            .loader {
-                border: 5px solid #f3f3f3;
-                border-top: 5px solid #6c63ff;
-                border-radius: 50%;
-                width: 50px;
-                height: 50px;
-                animation: spin 2s linear infinite;
-                margin: 20px auto;
-                display: none;
-            }
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Personal Fashion Stylist</h1>
-            
-            <div class="upload-section">
-                <form id="upload-form" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="image">Upload your photo:</label>
-                        <input type="file" id="image" name="image" accept="image/*" onchange="previewImage(event)">
-                        <img id="preview" src="#" alt="Preview">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="prompt">What are you looking for? (e.g., "casual outfit for weekend" or "business attire for interview")</label>
-                        <textarea id="prompt" name="prompt" rows="3" placeholder="Describe your style preferences, occasion, color preferences..."></textarea>
-                    </div>
-                    
-                    <button type="submit">Get Recommendations</button>
-                </form>
-            </div>
-            
-            <div class="loader" id="loader"></div>
-            
-            <div id="results">
-                <h2>Your Fashion Analysis</h2>
-                <div id="analysis-results"></div>
-                
-                <h2>Outfit Recommendations</h2>
-                <div id="outfit-results"></div>
-                
-                <h2>Style Tips</h2>
-                <div id="style-tips"></div>
-            </div>
-        </div>
-        
-        <script>
-            function previewImage(event) {
-                const preview = document.getElementById('preview');
-                preview.src = URL.createObjectURL(event.target.files[0]);
-                preview.style.display = 'block';
-            }
-            
-            document.getElementById('upload-form').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                // Show loader
-                document.getElementById('loader').style.display = 'block';
-                document.getElementById('results').style.display = 'none';
-                
-                const formData = new FormData(this);
-                
-                try {
-                    const response = await fetch('/analyze', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        displayResults(data);
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                } catch (error) {
-                    alert('An error occurred. Please try again.');
-                    console.error(error);
-                }
-                
-                // Hide loader
-                document.getElementById('loader').style.display = 'none';
-            });
-            
-            function displayResults(data) {
-                const results = document.getElementById('results');
-                const analysisResults = document.getElementById('analysis-results');
-                const outfitResults = document.getElementById('outfit-results');
-                const styleTips = document.getElementById('style-tips');
-                
-                // Display analysis results
-                analysisResults.innerHTML = `
-                    <p><strong>Body Shape:</strong> ${data.analysis.body_shape}</p>
-                    <p><strong>Face Shape:</strong> ${data.analysis.face_shape}</p>
-                    <p><strong>Skin Tone:</strong> ${data.analysis.skin_tone}</p>
-                    <p><strong>Style Preferences:</strong> ${data.analysis.style_preferences.style.join(', ')}</p>
-                    <p><strong>Occasion:</strong> ${data.analysis.style_preferences.occasion.join(', ')}</p>
-                `;
-                
-                // Display outfit recommendations
-                outfitResults.innerHTML = '';
-                if (data.recommendations.complete_outfits.length > 0) {
-                    data.recommendations.complete_outfits.forEach((outfit, index) => {
-                        let outfitHtml = `<div class="outfit">
-                            <h3>Outfit ${index + 1}</h3>
-                            <p>${outfit.description}</p>
-                            <ul>`;
-                        
-                        if (outfit.top) outfitHtml += `<li><strong>Top:</strong> ${outfit.top}</li>`;
-                        if (outfit.bottom) outfitHtml += `<li><strong>Bottom:</strong> ${outfit.bottom}</li>`;
-                        if (outfit.dress) outfitHtml += `<li><strong>Dress:</strong> ${outfit.dress}</li>`;
-                        if (outfit.accessory) outfitHtml += `<li><strong>Accessory:</strong> ${outfit.accessory}</li>`;
-                        
-                        outfitHtml += `</ul></div>`;
-                        outfitResults.innerHTML += outfitHtml;
-                    });
-                } else {
-                    outfitResults.innerHTML = '<p>No complete outfits could be generated based on your preferences.</p>';
-                }
-                
-                // Display style tips
-                styleTips.innerHTML = `
-                    <p>${data.recommendations.face_shape_advice}</p>
-                    <p><strong>Recommended Colors:</strong> ${data.recommendations.color_recommendations.join(', ')}</p>
-                `;
-                
-                // Show results section
-                results.style.display = 'block';
-            }
-        </script>
-    </body>
-    </html>
-    """
-    
-    with open('templates/index.html', 'w') as f:
-        f.write(html_content)
+    return jsonify(status)
 
 if __name__ == '__main__':
-    # Create templates directory if it doesn't exist
-    if not os.path.exists('templates'):
-        os.makedirs('templates')
-    
-    # Create dummy database and HTML template
-    create_dummy_database()
-    create_html_template()
-    
-    print("Fashion Recommendation System starting...")
+    print("Enhanced Fashion Recommendation System starting...")
     print("NOTE: This implementation requires the following packages:")
-    print("  - flask, opencv-python, numpy, face_recognition, dlib, tensorflow, scikit-learn")
-    print("  - You'll also need to download the shape_predictor_68_face_landmarks.dat file from dlib")
+    print("  - flask, opencv-python, numpy, mediapipe, tensorflow, scikit-learn, requests, python-dotenv")
+    
+    if USE_GROQ:
+        print("Using Groq AI API for enhanced recommendations")
+    elif USE_GEMINI:
+        print("Using Google Gemini AI API for enhanced recommendations")
+    else:
+        print("No AI API configured. Set GROQ_API_KEY or GEMINI_API_KEY in .env file for enhanced recommendations")
     
     app.run(host='0.0.0.0', port=5000, debug=True)
