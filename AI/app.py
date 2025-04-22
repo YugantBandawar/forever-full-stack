@@ -2,10 +2,10 @@
 import cv2
 import numpy as np
 from flask import Flask, request, jsonify, render_template
-import mediapipe as mp
-from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-from tensorflow.keras.preprocessing import image
+import mediapipe as mp # type: ignore
+from tensorflow.keras.applications import MobileNetV2 # type: ignore
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input # type: ignore
+from tensorflow.keras.preprocessing import image # type: ignore
 from sklearn.cluster import KMeans
 import json
 import random
