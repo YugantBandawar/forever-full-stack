@@ -353,28 +353,28 @@
                 outfitResults.innerHTML += `
                     <div class="section-header">
                         <h3 class="section-title">Personalized Outfits</h3>
-                        <span class="ai-provider-badge">Enhanced by ${data.ai_provider}</span>
+                        <span class="ai-provider-badge">Enhanced by forever AI</span>//${data.ai_provider}</span>
                     </div>
                 `;
             }
             
             // Display standard outfits
-            if (data.recommendations.complete_outfits && data.recommendations.complete_outfits.length > 0) {
-                data.recommendations.complete_outfits.forEach((outfit, index) => {
-                    let outfitHtml = `<div class="outfit">
-                        <h3>Outfit ${index + 1}</h3>
-                        <p>${outfit.description}</p>
-                        <ul>`;
+            // if (data.recommendations.complete_outfits && data.recommendations.complete_outfits.length > 0) {
+            //     data.recommendations.complete_outfits.forEach((outfit, index) => {
+            //         let outfitHtml = `<div class="outfit">
+            //             <h3>Outfit ${index + 1}</h3>
+            //             <p>${outfit.description}</p>
+            //             <ul>`;
                     
-                    if (outfit.top) outfitHtml += `<li><strong>Top:</strong> ${outfit.top}</li>`;
-                    if (outfit.bottom) outfitHtml += `<li><strong>Bottom:</strong> ${outfit.bottom}</li>`;
-                    if (outfit.dress) outfitHtml += `<li><strong>Dress:</strong> ${outfit.dress}</li>`;
-                    if (outfit.accessory) outfitHtml += `<li><strong>Accessory:</strong> ${outfit.accessory}</li>`;
+            //         if (outfit.top) outfitHtml += `<li><strong>Top:</strong> ${outfit.top}</li>`;
+            //         if (outfit.bottom) outfitHtml += `<li><strong>Bottom:</strong> ${outfit.bottom}</li>`;
+            //         if (outfit.dress) outfitHtml += `<li><strong>Dress:</strong> ${outfit.dress}</li>`;
+            //         if (outfit.accessory) outfitHtml += `<li><strong>Accessory:</strong> ${outfit.accessory}</li>`;
                     
-                    outfitHtml += `</ul></div>`;
-                    outfitResults.innerHTML += outfitHtml;
-                });
-            }
+            //         outfitHtml += `</ul></div>`;
+            //         outfitResults.innerHTML += outfitHtml;
+            //     });
+            // }
             
             // Add AI outfit recommendations if available
             if (parsedAIData && parsedAIData.outfit_recommendations && Array.isArray(parsedAIData.outfit_recommendations)) {
@@ -441,8 +441,8 @@
                 (parsedAIData?.style_tips || data.recommendations.ai_style_tips)) {
                 styleTips.innerHTML += `
                     <div class="section-header">
-                        <h3 class="section-title">Personalized Style Tips</h3>
-                        <span class="ai-provider-badge">Enhanced by ${data.ai_provider}</span>
+                        <h3 class="section-title">Personalized Outfits</h3>
+                        <span class="ai-provider-badge">Enhanced by forever AI</span>//${data.ai_provider}</span>
                     </div>
                 `;
             }
@@ -495,8 +495,8 @@
                 if (data.ai_enhanced && data.ai_provider) {
                     shoppingAccessories.innerHTML += `
                         <div class="section-header">
-                            <h3 class="section-title">Shopping & Accessories Guide</h3>
-                            <span class="ai-provider-badge">Enhanced by ${data.ai_provider}</span>
+                           <h3 class="section-title">Personalized Outfits</h3>
+                           <span class="ai-provider-badge">Enhanced by forever AI</span>//${data.ai_provider}</span>
                         </div>
                     `;
                 }
@@ -584,10 +584,10 @@
                 // Add AI provider badge if available
                 if (data.ai_enhanced && data.ai_provider) {
                     fashionTrends.innerHTML += `
-                        <div class="section-header">
-                            <h3 class="section-title">Fashion Trends</h3>
-                            <span class="ai-provider-badge">Enhanced by ${data.ai_provider}</span>
-                        </div>
+                    <div class="section-header">
+                        <h3 class="section-title">Personalized Outfits</h3>
+                        <span class="ai-provider-badge">Enhanced by forever AI</span>//${data.ai_provider}</span>
+                    </div>
                     `;
                 }
                 
