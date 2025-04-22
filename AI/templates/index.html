@@ -1,0 +1,227 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Fashion Recommendation System</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 20px;
+                background-color: #f8f9fa;
+                color: #333;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                background-color: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+                text-align: center;
+                color: #6c63ff;
+                margin-bottom: 30px;
+            }
+            .upload-section {
+                margin-bottom: 30px;
+                padding: 20px;
+                border: 2px dashed #ccc;
+                border-radius: 5px;
+                text-align: center;
+            }
+            .form-group {
+                margin-bottom: 20px;
+            }
+            label {
+                display: block;
+                margin-bottom: 8px;
+                font-weight: 600;
+            }
+            input[type="text"], textarea {
+                width: 100%;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                box-sizing: border-box;
+            }
+            input[type="file"] {
+                margin-top: 10px;
+            }
+            button {
+                background-color: #6c63ff;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 16px;
+                display: block;
+                margin: 20px auto 0;
+                transition: background-color 0.3s;
+            }
+            button:hover {
+                background-color: #5a52d5;
+            }
+            #preview {
+                max-width: 300px;
+                max-height: 300px;
+                margin: 20px auto;
+                display: none;
+            }
+            #results {
+                display: none;
+                margin-top: 30px;
+                padding: 20px;
+                background-color: #f0f0f0;
+                border-radius: 5px;
+            }
+            .outfit {
+                background-color: white;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 5px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            }
+            .loader {
+                border: 5px solid #f3f3f3;
+                border-top: 5px solid #6c63ff;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                animation: spin 2s linear infinite;
+                margin: 20px auto;
+                display: none;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Personal Fashion Stylist</h1>
+            
+            <div class="upload-section">
+                <form id="upload-form" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="image">Upload your photo:</label>
+                        <input type="file" id="image" name="image" accept="image/*" onchange="previewImage(event)">
+                        <img id="preview" src="#" alt="Preview">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="prompt">What are you looking for? (e.g., "casual outfit for weekend" or "business attire for interview")</label>
+                        <textarea id="prompt" name="prompt" rows="3" placeholder="Describe your style preferences, occasion, color preferences..."></textarea>
+                    </div>
+                    
+                    <button type="submit">Get Recommendations</button>
+                </form>
+            </div>
+            
+            <div class="loader" id="loader"></div>
+            
+            <div id="results">
+                <h2>Your Fashion Analysis</h2>
+                <div id="analysis-results"></div>
+                
+                <h2>Outfit Recommendations</h2>
+                <div id="outfit-results"></div>
+                
+                <h2>Style Tips</h2>
+                <div id="style-tips"></div>
+            </div>
+        </div>
+        
+        <script>
+            function previewImage(event) {
+                const preview = document.getElementById('preview');
+                preview.src = URL.createObjectURL(event.target.files[0]);
+                preview.style.display = 'block';
+            }
+            
+            document.getElementById('upload-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Show loader
+                document.getElementById('loader').style.display = 'block';
+                document.getElementById('results').style.display = 'none';
+                
+                const formData = new FormData(this);
+                
+                try {
+                    const response = await fetch('/analyze', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        displayResults(data);
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                } catch (error) {
+                    alert('An error occurred. Please try again.');
+                    console.error(error);
+                }
+                
+                // Hide loader
+                document.getElementById('loader').style.display = 'none';
+            });
+            
+            function displayResults(data) {
+                const results = document.getElementById('results');
+                const analysisResults = document.getElementById('analysis-results');
+                const outfitResults = document.getElementById('outfit-results');
+                const styleTips = document.getElementById('style-tips');
+                
+                // Display analysis results
+                analysisResults.innerHTML = `
+                    <p><strong>Body Shape:</strong> ${data.analysis.body_shape}</p>
+                    <p><strong>Face Shape:</strong> ${data.analysis.face_shape}</p>
+                    <p><strong>Skin Tone:</strong> ${data.analysis.skin_tone}</p>
+                    <p><strong>Style Preferences:</strong> ${data.analysis.style_preferences.style.join(', ')}</p>
+                    <p><strong>Occasion:</strong> ${data.analysis.style_preferences.occasion.join(', ')}</p>
+                `;
+                
+                // Display outfit recommendations
+                outfitResults.innerHTML = '';
+                if (data.recommendations.complete_outfits.length > 0) {
+                    data.recommendations.complete_outfits.forEach((outfit, index) => {
+                        let outfitHtml = `<div class="outfit">
+                            <h3>Outfit ${index + 1}</h3>
+                            <p>${outfit.description}</p>
+                            <ul>`;
+                        
+                        if (outfit.top) outfitHtml += `<li><strong>Top:</strong> ${outfit.top}</li>`;
+                        if (outfit.bottom) outfitHtml += `<li><strong>Bottom:</strong> ${outfit.bottom}</li>`;
+                        if (outfit.dress) outfitHtml += `<li><strong>Dress:</strong> ${outfit.dress}</li>`;
+                        if (outfit.accessory) outfitHtml += `<li><strong>Accessory:</strong> ${outfit.accessory}</li>`;
+                        
+                        outfitHtml += `</ul></div>`;
+                        outfitResults.innerHTML += outfitHtml;
+                    });
+                } else {
+                    outfitResults.innerHTML = '<p>No complete outfits could be generated based on your preferences.</p>';
+                }
+                
+                // Display style tips
+                styleTips.innerHTML = `
+                    <p>${data.recommendations.face_shape_advice}</p>
+                    <p><strong>Recommended Colors:</strong> ${data.recommendations.color_recommendations.join(', ')}</p>
+                `;
+                
+                // Show results section
+                results.style.display = 'block';
+            }
+        </script>
+    </body>
+    </html>
+    

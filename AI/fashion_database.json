@@ -1,0 +1,237 @@
+{
+  "items": [
+    {
+      "name": "V-neck T-shirt",
+      "category": "top",
+      "style": [
+        "casual",
+        "minimalist"
+      ],
+      "occasion": [
+        "everyday",
+        "weekend"
+      ],
+      "suitable_body_shapes": [
+        "inverted triangle",
+        "hourglass",
+        "rectangle",
+        "oval"
+      ]
+    },
+    {
+      "name": "Boat neck blouse",
+      "category": "top",
+      "style": [
+        "elegant",
+        "formal"
+      ],
+      "occasion": [
+        "work",
+        "dinner"
+      ],
+      "suitable_body_shapes": [
+        "pear",
+        "hourglass",
+        "oval"
+      ]
+    },
+    {
+      "name": "Button-down shirt",
+      "category": "top",
+      "style": [
+        "business",
+        "classic"
+      ],
+      "occasion": [
+        "work",
+        "interview"
+      ],
+      "suitable_body_shapes": [
+        "all"
+      ]
+    },
+    {
+      "name": "Wrap top",
+      "category": "top",
+      "style": [
+        "elegant",
+        "formal"
+      ],
+      "occasion": [
+        "work",
+        "dinner",
+        "date"
+      ],
+      "suitable_body_shapes": [
+        "hourglass",
+        "rectangle",
+        "oval",
+        "inverted triangle"
+      ]
+    },
+    {
+      "name": "Straight leg jeans",
+      "category": "bottom",
+      "style": [
+        "casual",
+        "classic"
+      ],
+      "occasion": [
+        "everyday",
+        "weekend"
+      ],
+      "suitable_body_shapes": [
+        "hourglass",
+        "rectangle"
+      ]
+    },
+    {
+      "name": "A-line skirt",
+      "category": "bottom",
+      "style": [
+        "elegant",
+        "classic"
+      ],
+      "occasion": [
+        "work",
+        "dinner"
+      ],
+      "suitable_body_shapes": [
+        "pear",
+        "hourglass",
+        "oval"
+      ]
+    },
+    {
+      "name": "Tailored trousers",
+      "category": "bottom",
+      "style": [
+        "business",
+        "formal"
+      ],
+      "occasion": [
+        "work",
+        "interview"
+      ],
+      "suitable_body_shapes": [
+        "hourglass",
+        "rectangle",
+        "inverted triangle"
+      ]
+    },
+    {
+      "name": "Wide-leg pants",
+      "category": "bottom",
+      "style": [
+        "trendy",
+        "boho"
+      ],
+      "occasion": [
+        "everyday",
+        "weekend",
+        "beach"
+      ],
+      "suitable_body_shapes": [
+        "inverted triangle",
+        "rectangle",
+        "hourglass"
+      ]
+    },
+    {
+      "name": "Wrap dress",
+      "category": "dress",
+      "style": [
+        "elegant",
+        "classic"
+      ],
+      "occasion": [
+        "work",
+        "dinner",
+        "date"
+      ],
+      "suitable_body_shapes": [
+        "all"
+      ]
+    },
+    {
+      "name": "A-line dress",
+      "category": "dress",
+      "style": [
+        "elegant",
+        "formal"
+      ],
+      "occasion": [
+        "wedding",
+        "formal event"
+      ],
+      "suitable_body_shapes": [
+        "pear",
+        "oval",
+        "rectangle"
+      ]
+    },
+    {
+      "name": "Shift dress",
+      "category": "dress",
+      "style": [
+        "minimalist",
+        "business"
+      ],
+      "occasion": [
+        "work",
+        "interview"
+      ],
+      "suitable_body_shapes": [
+        "inverted triangle",
+        "rectangle"
+      ]
+    },
+    {
+      "name": "Statement necklace",
+      "category": "accessory",
+      "style": [
+        "trendy",
+        "elegant"
+      ],
+      "occasion": [
+        "dinner",
+        "party",
+        "date"
+      ],
+      "suitable_body_shapes": [
+        "all"
+      ]
+    },
+    {
+      "name": "Structured handbag",
+      "category": "accessory",
+      "style": [
+        "business",
+        "classic"
+      ],
+      "occasion": [
+        "work",
+        "interview"
+      ],
+      "suitable_body_shapes": [
+        "all"
+      ]
+    },
+    {
+      "name": "Hoop earrings",
+      "category": "accessory",
+      "style": [
+        "casual",
+        "trendy"
+      ],
+      "occasion": [
+        "everyday",
+        "weekend",
+        "party"
+      ],
+      "suitable_body_shapes": [
+        "all"
+      ]
+    }
+  ]
+}
