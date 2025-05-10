@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Enhanced Fashion Recommendation System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #6c63ff;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="file"] {
+            margin-top: 10px;
+        }
+        button {
+            background-color: #6c63ff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            margin: 20px auto 0;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #5a52d5;
+        }
+        #preview {
+            max-width: 300px;
+            max-height: 300px;
+            margin: 20px auto;
+            display: none;
+        }
+        #results {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        .outfit {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #6c63ff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .ai-badge {
+            display: inline-block;
+            background-color: #6c63ff;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .ai-section {
+            background-color: #f0f6ff;
+            border-left: 4px solid #6c63ff;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 5px 5px 0;
+        }
+        .accordion {
+            background-color: #eee;
+            color: #444;
+            cursor: pointer;
+            padding: 18px;
+            width: 100%;
+            text-align: left;
+            border: none;
+            outline: none;
+            transition: 0.4s;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            font-weight: 600;
+        }
+        .accordion:hover {
+            background-color: #ddd;
+        }
+        .panel {
+            padding: 0 18px;
+            background-color: white;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            margin-bottom: 10px;
+            border-radius: 0 0 5px 5px;
+        }
+        .active {
+            background-color: #d9d9ff;
+        }
+        .api-status {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-active {
+            background-color: #4CAF50;
+        }
+        .status-inactive {
+            background-color: #F44336;
+        }
+        .ai-provider-badge {
+            display: inline-block;
+            background-color: #6c63ff;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 15px;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .section-title {
+            margin: 0;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI-Enhanced Personal Fashion Stylist</h1>
+        
+        <div class="api-status" id="api-status">
+            Checking API status...
+        </div>
+        
+        <div class="upload-section">
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="image">Upload your photo:</label>
+                    <input type="file" id="image" name="image" accept="image/*" onchange="previewImage(event)">
+                    <img id="preview" src="#" alt="Preview">
+                </div>
+                
+                <div class="form-group">
+                    <label for="prompt">What are you looking for? (e.g., "casual outfit for weekend" or "business attire for interview")</label>
+                    <textarea id="prompt" name="prompt" rows="3" placeholder="Describe your style preferences, occasion, color preferences..."></textarea>
+                </div>
+                
+                <button type="submit">Get Recommendations</button>
+            </form>
+        </div>
+        
+        <div class="loader" id="loader"></div>
+        
+        <div id="results">
+            <h2>Your Fashion Analysis</h2>
+            <div id="analysis-results"></div>
+            
+            <h2>Outfit Recommendations</h2>
+            <div id="outfit-results"></div>
+            
+            <h2>Style Tips</h2>
+            <div id="style-tips"></div>
+            
+            <h2>Shopping & Accessories</h2>
+            <div id="shopping-accessories"></div>
+            
+            <h2>Fashion Trends</h2>
+            <div id="fashion-trends"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Check API status on page load
+        window.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api-status');
+                const status = await response.json();
+                
+                let statusHTML = '';
+                
+                if (status.groq === 'available') {
+                    statusHTML += '<div><span class="status-indicator status-active"></span>Groq AI API: Active</div>';
+                } else {
+                    statusHTML += '<div><span class="status-indicator status-inactive"></span>Groq AI API: Not configured</div>';
+                }
+                
+                if (status.gemini === 'available') {
+                    statusHTML += '<div><span class="status-indicator status-active"></span>Gemini AI API: Active</div>';
+                } else {
+                    statusHTML += '<div><span class="status-indicator status-inactive"></span>Gemini AI API: Not configured</div>';
+                }
+                
+                document.getElementById('api-status').innerHTML = statusHTML;
+            } catch (error) {
+                console.error('Error checking API status:', error);
+                document.getElementById('api-status').innerHTML = 'Error checking API status';
+            }
+        });
+
+        function previewImage(event) {
+            const preview = document.getElementById('preview');
+            preview.src = URL.createObjectURL(event.target.files[0]);
+            preview.style.display = 'block';
+        }
+        
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loader
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            
+            const formData = new FormData(this);
+            
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResults(data);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('An error occurred. Please try again.');
+                console.error(error);
+            }
+            
+            // Hide loader
+            document.getElementById('loader').style.display = 'none';
+        });
+        
+        function parseAIResponse(aiResponse) {
+            // If it's already a parsed object, just return it
+            if (typeof aiResponse === 'object' && aiResponse !== null && !Array.isArray(aiResponse)) {
+                return aiResponse;
+            }
+            
+            // If it's a string, try to parse it as JSON
+            if (typeof aiResponse === 'string') {
+                try {
+                    // Extract JSON from the response if wrapped in text
+                    const jsonMatch = aiResponse.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+                    if (jsonMatch && jsonMatch[1]) {
+                        return JSON.parse(jsonMatch[1]);
+                    }
+                    
+                    // Try to parse the entire string as JSON
+                    return JSON.parse(aiResponse);
+                } catch (e) {
+                    console.error('Error parsing AI response:', e);
+                    // Return the original string if parsing fails
+                    return { raw_response: aiResponse };
+                }
+            }
+            
+            return aiResponse;
+        }
+        
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            const analysisResults = document.getElementById('analysis-results');
+            const outfitResults = document.getElementById('outfit-results');
+            const styleTips = document.getElementById('style-tips');
+            const shoppingAccessories = document.getElementById('shopping-accessories');
+            const fashionTrends = document.getElementById('fashion-trends');
+            
+            // Display analysis results
+            analysisResults.innerHTML = `
+                <p><strong>Body Shape:</strong> ${data.analysis.body_shape}</p>
+                <p><strong>Face Shape:</strong> ${data.analysis.face_shape}</p>
+                <p><strong>Skin Tone:</strong> ${data.analysis.skin_tone}</p>
+                <p><strong>Style Preferences:</strong> ${data.analysis.style_preferences.style.join(', ')}</p>
+                <p><strong>Occasion:</strong> ${data.analysis.style_preferences.occasion.join(', ')}</p>
+            `;
+            
+            // Process and parse AI response data if available
+            let parsedAIData = null;
+            if (data.ai_enhanced && data.recommendations.ai_fashion_advice) {
+                parsedAIData = parseAIResponse(data.recommendations.ai_fashion_advice);
+            }
+            
+            // Display outfit recommendations (combine standard and AI if available)
+            outfitResults.innerHTML = '';
+            
+            // Add AI provider badge if available
+            if (data.ai_enhanced && data.ai_provider) {
+                outfitResults.innerHTML += `
+                    <div class="section-header">
+                        <h3 class="section-title">Personalized Outfits</h3>
+                        <span class="ai-provider-badge">Enhanced by forever AI</span>//${data.ai_provider}</span>
+                    </div>
+                `;
+            }
+            
+            // Display standard outfits
+            // if (data.recommendations.complete_outfits && data.recommendations.complete_outfits.length > 0) {
+            //     data.recommendations.complete_outfits.forEach((outfit, index) => {
+            //         let outfitHtml = `<div class="outfit">
+            //             <h3>Outfit ${index + 1}</h3>
+            //             <p>${outfit.description}</p>
+            //             <ul>`;
+                    
+            //         if (outfit.top) outfitHtml += `<li><strong>Top:</strong> ${outfit.top}</li>`;
+            //         if (outfit.bottom) outfitHtml += `<li><strong>Bottom:</strong> ${outfit.bottom}</li>`;
+            //         if (outfit.dress) outfitHtml += `<li><strong>Dress:</strong> ${outfit.dress}</li>`;
+            //         if (outfit.accessory) outfitHtml += `<li><strong>Accessory:</strong> ${outfit.accessory}</li>`;
+                    
+            //         outfitHtml += `</ul></div>`;
+            //         outfitResults.innerHTML += outfitHtml;
+            //     });
+            // }
+            
+            // Add AI outfit recommendations if available
+            if (parsedAIData && parsedAIData.outfit_recommendations && Array.isArray(parsedAIData.outfit_recommendations)) {
+                parsedAIData.outfit_recommendations.forEach((outfit, index) => {
+                    let outfitHtml = `<div class="outfit">
+                        <h3>${outfit.description || `AI Outfit ${index + 1}`}</h3>`;
+                    
+                    if (outfit.description) outfitHtml += `<p>${outfit.description}</p>`;
+                    
+                    outfitHtml += `<ul>`;
+                    
+                    for (const [key, value] of Object.entries(outfit)) {
+                        if (key !== 'description' && !Array.isArray(value)) {
+                            outfitHtml += `<li><strong>${key.charAt(0).toUpperCase() + key.slice(1)}:</strong> ${value}</li>`;
+                        }
+                    }
+                    
+                    // Handle accessories array if present
+                    if (outfit.accessories && Array.isArray(outfit.accessories)) {
+                        outfitHtml += `<li><strong>Accessories:</strong> ${outfit.accessories.join(', ')}</li>`;
+                    }
+                    
+                    outfitHtml += `</ul></div>`;
+                    outfitResults.innerHTML += outfitHtml;
+                });
+            } else if (data.recommendations.ai_outfit_recommendations) {
+                // Handle existing AI outfit recommendations format
+                if (Array.isArray(data.recommendations.ai_outfit_recommendations)) {
+                    data.recommendations.ai_outfit_recommendations.forEach((outfit, index) => {
+                        if (typeof outfit === 'string') {
+                            outfitResults.innerHTML += `<div class="outfit"><p>${outfit}</p></div>`;
+                        } else {
+                            let outfitHtml = `<div class="outfit">
+                                <h3>AI Outfit ${index + 1}</h3>`;
+                            
+                            if (outfit.description) outfitHtml += `<p>${outfit.description}</p>`;
+                            
+                            outfitHtml += `<ul>`;
+                            
+                            for (const [key, value] of Object.entries(outfit)) {
+                                if (key !== 'description') {
+                                    outfitHtml += `<li><strong>${key.charAt(0).toUpperCase() + key.slice(1)}:</strong> ${value}</li>`;
+                                }
+                            }
+                            
+                            outfitHtml += `</ul></div>`;
+                            outfitResults.innerHTML += outfitHtml;
+                        }
+                    });
+                }
+            }
+            
+            if (!data.recommendations.complete_outfits?.length && 
+                !parsedAIData?.outfit_recommendations?.length && 
+                !data.recommendations.ai_outfit_recommendations) {
+                outfitResults.innerHTML = '<p>No outfit recommendations could be generated based on your preferences.</p>';
+            }
+            
+            // Display style tips (combine standard and AI)
+            styleTips.innerHTML = '';
+            
+            // Add AI provider badge if available and style tips exist
+            if (data.ai_enhanced && data.ai_provider && 
+                (parsedAIData?.style_tips || data.recommendations.ai_style_tips)) {
+                styleTips.innerHTML += `
+                    <div class="section-header">
+                        <h3 class="section-title">Personalized Outfits</h3>
+                        <span class="ai-provider-badge">Enhanced by forever AI</span>//${data.ai_provider}</span>
+                    </div>
+                `;
+            }
+            
+            // Add standard style tips
+            styleTips.innerHTML += `
+                <p>${data.recommendations.face_shape_advice || ''}</p>
+                <p><strong>Recommended Colors:</strong> ${data.recommendations.color_recommendations?.join(', ') || 'No color recommendations available'}</p>
+            `;
+            
+            // Add AI style tips if available
+            if (parsedAIData && parsedAIData.style_tips) {
+                const styleObj = parsedAIData.style_tips;
+                
+                styleTips.innerHTML += `<div class="ai-section">`;
+                
+                for (const [key, value] of Object.entries(styleObj)) {
+                    styleTips.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}</p>`;
+                }
+                
+                styleTips.innerHTML += `</div>`;
+            } else if (data.recommendations.ai_style_tips) {
+                // Handle existing AI style tips format
+                styleTips.innerHTML += `<div class="ai-section">`;
+                
+                if (typeof data.recommendations.ai_style_tips === 'string') {
+                    styleTips.innerHTML += `<p>${data.recommendations.ai_style_tips}</p>`;
+                } else if (Array.isArray(data.recommendations.ai_style_tips)) {
+                    data.recommendations.ai_style_tips.forEach(tip => {
+                        styleTips.innerHTML += `<p>• ${tip}</p>`;
+                    });
+                } else if (typeof data.recommendations.ai_style_tips === 'object') {
+                    for (const [key, value] of Object.entries(data.recommendations.ai_style_tips)) {
+                        styleTips.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}</p>`;
+                    }
+                }
+                
+                styleTips.innerHTML += `</div>`;
+            }
+            
+            // Display shopping & accessories tips
+            shoppingAccessories.innerHTML = '';
+            
+            // Add shopping & accessories section if AI data is available
+            if ((parsedAIData && (parsedAIData.accessory_recommendations || parsedAIData.shopping_tips)) || 
+                data.recommendations.ai_accessory_recommendations || 
+                data.recommendations.shopping_tips) {
+                
+                // Add AI provider badge if available
+                if (data.ai_enhanced && data.ai_provider) {
+                    shoppingAccessories.innerHTML += `
+                        <div class="section-header">
+                           <h3 class="section-title">Personalized Outfits</h3>
+                           <span class="ai-provider-badge">Enhanced by forever AI</span>//${data.ai_provider}</span>
+                        </div>
+                    `;
+                }
+                
+                // Add accessory recommendations
+                if (parsedAIData && parsedAIData.accessory_recommendations) {
+                    shoppingAccessories.innerHTML += `<h3>Accessory Recommendations</h3><div class="ai-section">`;
+                    
+                    const accessoryObj = parsedAIData.accessory_recommendations;
+                    for (const [key, value] of Object.entries(accessoryObj)) {
+                        shoppingAccessories.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}</p>`;
+                    }
+                    
+                    shoppingAccessories.innerHTML += `</div>`;
+                } else if (data.recommendations.ai_accessory_recommendations) {
+                    // Handle existing accessory recommendations format
+                    shoppingAccessories.innerHTML += `<h3>Accessory Recommendations</h3><div class="ai-section">`;
+                    
+                    if (typeof data.recommendations.ai_accessory_recommendations === 'string') {
+                        shoppingAccessories.innerHTML += `<p>${data.recommendations.ai_accessory_recommendations}</p>`;
+                    } else if (Array.isArray(data.recommendations.ai_accessory_recommendations)) {
+                        data.recommendations.ai_accessory_recommendations.forEach(item => {
+                            shoppingAccessories.innerHTML += `<p>• ${item}</p>`;
+                        });
+                    } else if (typeof data.recommendations.ai_accessory_recommendations === 'object') {
+                        for (const [key, value] of Object.entries(data.recommendations.ai_accessory_recommendations)) {
+                            shoppingAccessories.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}</p>`;
+                        }
+                    }
+                    
+                    shoppingAccessories.innerHTML += `</div>`;
+                }
+                
+                // Add shopping tips
+                if (parsedAIData && parsedAIData.shopping_tips) {
+                    shoppingAccessories.innerHTML += `<h3>Shopping Tips</h3><div class="ai-section">`;
+                    
+                    const shoppingObj = parsedAIData.shopping_tips;
+                    for (const [key, value] of Object.entries(shoppingObj)) {
+                        if (Array.isArray(value)) {
+                            shoppingAccessories.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong></p><ul>`;
+                            value.forEach(item => {
+                                shoppingAccessories.innerHTML += `<li>${item}</li>`;
+                            });
+                            shoppingAccessories.innerHTML += `</ul>`;
+                        } else {
+                            shoppingAccessories.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}</p>`;
+                        }
+                    }
+                    
+                    shoppingAccessories.innerHTML += `</div>`;
+                } else if (data.recommendations.shopping_tips) {
+                    // Handle existing shopping tips format
+                    shoppingAccessories.innerHTML += `<h3>Shopping Tips</h3><div class="ai-section">`;
+                    
+                    if (typeof data.recommendations.shopping_tips === 'string') {
+                        shoppingAccessories.innerHTML += `<p>${data.recommendations.shopping_tips}</p>`;
+                    } else if (Array.isArray(data.recommendations.shopping_tips)) {
+                        data.recommendations.shopping_tips.forEach(tip => {
+                            shoppingAccessories.innerHTML += `<p>• ${tip}</p>`;
+                        });
+                    } else if (typeof data.recommendations.shopping_tips === 'object') {
+                        for (const [key, value] of Object.entries(data.recommendations.shopping_tips)) {
+                            if (Array.isArray(value)) {
+                                shoppingAccessories.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong></p><ul>`;
+                                value.forEach(item => {
+                                    shoppingAccessories.innerHTML += `<li>${item}</li>`;
+                                });
+                                shoppingAccessories.innerHTML += `</ul>`;
+                            } else {
+                                shoppingAccessories.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}</p>`;
+                            }
+                        }
+                    }
+                    
+                    shoppingAccessories.innerHTML += `</div>`;
+                }
+            }
+            
+            // Display fashion trends
+            fashionTrends.innerHTML = '';
+            
+            // Add fashion trends section if AI data is available
+            if ((parsedAIData && parsedAIData.fashion_trends) || data.recommendations.fashion_trends) {
+                // Add AI provider badge if available
+                if (data.ai_enhanced && data.ai_provider) {
+                    fashionTrends.innerHTML += `
+                    <div class="section-header">
+                        <h3 class="section-title">Personalized Outfits</h3>
+                        <span class="ai-provider-badge">Enhanced by forever AI</span>//${data.ai_provider}</span>
+                    </div>
+                    `;
+                }
+                
+                fashionTrends.innerHTML += `<div class="ai-section">`;
+                
+                if (parsedAIData && parsedAIData.fashion_trends) {
+                    const trendsObj = parsedAIData.fashion_trends;
+                    
+                    for (const [key, value] of Object.entries(trendsObj)) {
+                        if (Array.isArray(value)) {
+                            fashionTrends.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong></p><ul>`;
+                            value.forEach(trend => {
+                                fashionTrends.innerHTML += `<li>${trend}</li>`;
+                            });
+                            fashionTrends.innerHTML += `</ul>`;
+                        } else {
+                            fashionTrends.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}</p>`;
+                        }
+                    }
+                } else if (data.recommendations.fashion_trends) {
+                    // Handle existing fashion trends format
+                    if (typeof data.recommendations.fashion_trends === 'string') {
+                        fashionTrends.innerHTML += `<p>${data.recommendations.fashion_trends}</p>`;
+                    } else if (Array.isArray(data.recommendations.fashion_trends)) {
+                        data.recommendations.fashion_trends.forEach(trend => {
+                            fashionTrends.innerHTML += `<p>• ${trend}</p>`;
+                        });
+                    } else if (typeof data.recommendations.fashion_trends === 'object') {
+                        for (const [key, value] of Object.entries(data.recommendations.fashion_trends)) {
+                            if (Array.isArray(value)) {
+                                fashionTrends.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong></p><ul>`;
+                                value.forEach(trend => {
+                                    fashionTrends.innerHTML += `<li>${trend}</li>`;
+                                });
+                                fashionTrends.innerHTML += `</ul>`;
+                            } else {
+                                fashionTrends.innerHTML += `<p><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> ${value}</p>`;
+                            }
+                        }
+                    }
+                }
+                
+                fashionTrends.innerHTML += `</div>`;
+            }
+            
+            // Show results section
+            results.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
