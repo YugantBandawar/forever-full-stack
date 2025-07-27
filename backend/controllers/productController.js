@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from "cloudinary"
 import productModel from "../models/productModel.js"
-import orderModel from '../models/orderModel.js'
+import orderModel from "../models/orderModel.js"
 
 // function for add product
 const addProduct = async (req, res) => {
@@ -93,37 +93,37 @@ const singleProduct = async (req, res) => {
  
  // Iterate through each item in the items array of the order, check if the item has been delivered and the payment is made. if yes, then group same items and calculate their quantities. Finally sort them in descending order and get the top 5 items.
  const getBestSellers = async (req, res) => {
-    try {
-        const topSellingProducts = await orderModel.aggregate([
-            { $unwind: "$items" },
-
-            { $match: { 
-                // payment: true,
-                status: "Delivered"
-            }},
-
-            { $group: {
-                _id: "$items._id",
-                totalSold: { $sum: "$items.quantity" }
-            }},
-
-            { $sort: { totalSold: -1 }},
-            { $limit: 5 }
-        ]);
-
-        const productIds = topSellingProducts.map(p => p._id);
-        const bestSellers = await productModel.find({ _id: { $in: productIds }});
-
-        const sortedBestSellers = productIds.map(id => 
-            bestSellers.find(product => product._id.toString() === id)
-        );
-
-        res.json({ success: true, bestSellers: sortedBestSellers });
-
-    } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
-    }
-}
-
-export { listProducts, addProduct, removeProduct, singleProduct, getBestSellers }
+     try {
+         const topSellingProducts = await orderModel.aggregate([
+             { $unwind: "$items" },
+ 
+             { $match: { 
+                 // payment: true,
+                 status: "Delivered"
+             }},
+ 
+             { $group: {
+                 _id: "$items._id",
+                 totalSold: { $sum: "$items.quantity" }
+             }},
+ 
+             { $sort: { totalSold: -1 }},
+             { $limit: 5 }
+         ]);
+ 
+         const productIds = topSellingProducts.map(p => p._id);
+         const bestSellers = await productModel.find({ _id: { $in: productIds }});
+ 
+         const sortedBestSellers = productIds.map(id => 
+             bestSellers.find(product => product._id.toString() === id)
+         );
+ 
+         res.json({ success: true, bestSellers: sortedBestSellers });
+ 
+     } catch (error) {
+         console.log(error);
+         res.json({ success: false, message: error.message });
+     }
+ }
+ 
+ export { listProducts, addProduct, removeProduct, singleProduct, getBestSellers }

@@ -9,7 +9,7 @@ const Footer = () => {
         <div>
             <img src={assets.logo} className='mb-5 w-32' alt="" />
             <p className='w-full md:w-2/3 text-gray-600'>
-            Forever is more than a brand — it’s a lifestyle. We create timeless pieces designed to inspire confidence and celebrate individuality, every day.
+            StyleSphere is more than a brand — it’s a lifestyle. We create timeless pieces designed to inspire confidence and celebrate individuality, every day.
             </p>
         </div>
 
